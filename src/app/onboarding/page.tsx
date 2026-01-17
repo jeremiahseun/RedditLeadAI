@@ -1,12 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowRight, ArrowLeft, Package, Search, Hash, Loader2 } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Package, Search, Hash, Loader2, Sparkles, Globe } from 'lucide-react'
 import { toast } from 'sonner'
 
-const SUGGESTED_SUBREDDITS = [
+interface DiscoveredSubreddit {
+    name: string
+    title: string
+    description: string
+    subscribers: number
+    relevanceScore: number
+}
+
+const DEFAULT_SUBREDDITS = [
     { name: 'SaaS', description: 'Software as a Service discussions' },
     { name: 'startups', description: 'Startup founders and entrepreneurs' },
     { name: 'Entrepreneur', description: 'Business and entrepreneurship' },
@@ -14,22 +22,57 @@ const SUGGESTED_SUBREDDITS = [
     { name: 'indiehackers', description: 'Indie hackers and solo founders' },
     { name: 'webdev', description: 'Web development' },
     { name: 'marketing', description: 'Marketing strategies' },
-    { name: 'socialmedia', description: 'Social media marketing' },
     { name: 'ecommerce', description: 'E-commerce businesses' },
-    { name: 'gamedev', description: 'Game development' },
 ]
 
 export default function OnboardingPage() {
     const router = useRouter()
     const [step, setStep] = useState(1)
     const [isLoading, setIsLoading] = useState(false)
+    const [isDiscovering, setIsDiscovering] = useState(false)
 
     // Form data
     const [productName, setProductName] = useState('')
     const [productDescription, setProductDescription] = useState('')
     const [selectedSubreddits, setSelectedSubreddits] = useState<string[]>([])
+    const [discoveredSubreddits, setDiscoveredSubreddits] = useState<DiscoveredSubreddit[]>([])
     const [keywords, setKeywords] = useState<string[]>([])
     const [keywordInput, setKeywordInput] = useState('')
+    const [enableGlobalSearch, setEnableGlobalSearch] = useState(true)
+
+    // Discover subreddits when moving to step 2
+    const discoverSubreddits = useCallback(async () => {
+        if (!productName && !productDescription) return
+
+        setIsDiscovering(true)
+        try {
+            const response = await fetch('/api/subreddits/discover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    productName,
+                    productDescription,
+                    keywords: [],
+                }),
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setDiscoveredSubreddits(data.suggestions || [])
+            }
+        } catch (error) {
+            console.error('Discovery error:', error)
+        } finally {
+            setIsDiscovering(false)
+        }
+    }, [productName, productDescription])
+
+    // Auto-discover when reaching step 2
+    useEffect(() => {
+        if (step === 2 && discoveredSubreddits.length === 0) {
+            discoverSubreddits()
+        }
+    }, [step, discoveredSubreddits.length, discoverSubreddits])
 
     const handleAddKeyword = () => {
         if (keywordInput.trim() && !keywords.includes(keywordInput.trim())) {
@@ -58,9 +101,8 @@ export default function OnboardingPage() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not authenticated')
 
-            // Create or get subreddits
+            // Create trackers for selected subreddits
             for (const subredditName of selectedSubreddits) {
-                // Upsert subreddit
                 const { data: subreddit } = await supabase
                     .from('subreddits')
                     .upsert({ name: subredditName.toLowerCase() }, { onConflict: 'name' })
@@ -68,7 +110,6 @@ export default function OnboardingPage() {
                     .single()
 
                 if (subreddit) {
-                    // Create user tracker
                     await supabase
                         .from('user_trackers')
                         .insert({
@@ -81,7 +122,29 @@ export default function OnboardingPage() {
                 }
             }
 
-            toast.success('Setup complete!')
+            // If global search enabled and no subreddits selected, create a "global" tracker
+            if (enableGlobalSearch && selectedSubreddits.length === 0) {
+                // Create a placeholder for global search
+                const { data: globalSub } = await supabase
+                    .from('subreddits')
+                    .upsert({ name: '_global_search' }, { onConflict: 'name' })
+                    .select()
+                    .single()
+
+                if (globalSub) {
+                    await supabase
+                        .from('user_trackers')
+                        .insert({
+                            user_id: user.id,
+                            subreddit_id: globalSub.id,
+                            product_name: productName,
+                            product_description: productDescription,
+                            keywords: keywords,
+                        })
+                }
+            }
+
+            toast.success('Setup complete! Finding leads...')
             router.push('/dashboard')
         } catch (error) {
             console.error('Onboarding error:', error)
@@ -89,6 +152,12 @@ export default function OnboardingPage() {
         } finally {
             setIsLoading(false)
         }
+    }
+
+    const formatSubscribers = (count: number) => {
+        if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`
+        if (count >= 1000) return `${(count / 1000).toFixed(0)}K`
+        return count.toString()
     }
 
     return (
@@ -115,7 +184,7 @@ export default function OnboardingPage() {
                                     <Package className="w-7 h-7 text-purple-400" />
                                 </div>
                                 <h2 className="text-2xl font-bold text-white">Tell us about your product</h2>
-                                <p className="text-slate-400 mt-2">This helps our AI generate relevant replies</p>
+                                <p className="text-slate-400 mt-2">This helps our AI find relevant leads</p>
                             </div>
 
                             <div>
@@ -149,32 +218,105 @@ export default function OnboardingPage() {
                     {/* Step 2: Subreddits */}
                     {step === 2 && (
                         <div className="space-y-6">
-                            <div className="text-center mb-8">
+                            <div className="text-center mb-6">
                                 <div className="w-14 h-14 bg-purple-500/20 rounded-xl flex items-center justify-center mx-auto mb-4">
                                     <Search className="w-7 h-7 text-purple-400" />
                                 </div>
-                                <h2 className="text-2xl font-bold text-white">Pick subreddits to monitor</h2>
-                                <p className="text-slate-400 mt-2">Select where your customers hang out</p>
+                                <h2 className="text-2xl font-bold text-white">Where are your customers?</h2>
+                                <p className="text-slate-400 mt-2">
+                                    Pick subreddits to monitor, or let us search everywhere
+                                </p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                {SUGGESTED_SUBREDDITS.map((sub) => (
-                                    <button
-                                        key={sub.name}
-                                        onClick={() => toggleSubreddit(sub.name)}
-                                        className={`p-4 rounded-xl border text-left transition-all ${selectedSubreddits.includes(sub.name)
+                            {/* Global Search Toggle */}
+                            <div className="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={enableGlobalSearch}
+                                        onChange={(e) => setEnableGlobalSearch(e.target.checked)}
+                                        className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-purple-500 focus:ring-purple-500 mt-0.5"
+                                    />
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <Globe className="w-4 h-4 text-purple-400" />
+                                            <span className="font-medium text-white">Search all of Reddit</span>
+                                        </div>
+                                        <p className="text-sm text-slate-400 mt-1">
+                                            Find posts in unexpected places (e.g., fashion questions in r/Nigeria)
+                                        </p>
+                                    </div>
+                                </label>
+                            </div>
+
+                            {/* AI Suggested Subreddits */}
+                            {isDiscovering ? (
+                                <div className="text-center py-8">
+                                    <Loader2 className="w-8 h-8 animate-spin text-purple-400 mx-auto mb-3" />
+                                    <p className="text-slate-400">Discovering relevant subreddits...</p>
+                                </div>
+                            ) : discoveredSubreddits.length > 0 && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Sparkles className="w-4 h-4 text-purple-400" />
+                                        <span className="text-sm font-medium text-slate-300">
+                                            AI Suggestions for &quot;{productName}&quot;
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                                        {discoveredSubreddits.slice(0, 8).map((sub) => (
+                                            <button
+                                                key={sub.name}
+                                                onClick={() => toggleSubreddit(sub.name)}
+                                                className={`p-3 rounded-xl border text-left transition-all ${selectedSubreddits.includes(sub.name)
+                                                    ? 'border-purple-500 bg-purple-500/10'
+                                                    : 'border-slate-700 hover:border-slate-600'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <p className="font-medium text-white text-sm">r/{sub.name}</p>
+                                                    <span className="text-xs text-slate-500">
+                                                        {formatSubscribers(sub.subscribers)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+                                                    {sub.title || sub.description}
+                                                </p>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Default Subreddits */}
+                            <div>
+                                <span className="text-sm font-medium text-slate-400 mb-3 block">
+                                    Popular subreddits
+                                </span>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {DEFAULT_SUBREDDITS.map((sub) => (
+                                        <button
+                                            key={sub.name}
+                                            onClick={() => toggleSubreddit(sub.name)}
+                                            className={`p-3 rounded-xl border text-left transition-all ${selectedSubreddits.includes(sub.name)
                                                 ? 'border-purple-500 bg-purple-500/10'
                                                 : 'border-slate-700 hover:border-slate-600'
-                                            }`}
-                                    >
-                                        <p className="font-medium text-white">r/{sub.name}</p>
-                                        <p className="text-xs text-slate-400 mt-1">{sub.description}</p>
-                                    </button>
-                                ))}
+                                                }`}
+                                        >
+                                            <p className="font-medium text-white text-sm">r/{sub.name}</p>
+                                            <p className="text-xs text-slate-400 mt-1">{sub.description}</p>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <p className="text-sm text-slate-500 text-center">
-                                Selected: {selectedSubreddits.length} subreddit(s)
+                                {selectedSubreddits.length > 0
+                                    ? `Selected: ${selectedSubreddits.length} subreddit(s)`
+                                    : enableGlobalSearch
+                                        ? 'Global search enabled - we\'ll find leads everywhere'
+                                        : 'Select at least 1 subreddit or enable global search'
+                                }
                             </p>
                         </div>
                     )}
@@ -253,7 +395,7 @@ export default function OnboardingPage() {
                                 onClick={() => setStep(step + 1)}
                                 disabled={
                                     (step === 1 && (!productName || !productDescription)) ||
-                                    (step === 2 && selectedSubreddits.length === 0)
+                                    (step === 2 && selectedSubreddits.length === 0 && !enableGlobalSearch)
                                 }
                                 className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-6 py-3 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
