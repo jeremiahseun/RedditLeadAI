@@ -67,7 +67,7 @@ The scraper runs on GitHub Actions, not Vercel. Add secrets to your repo:
 |--------|-------|
 | `SUPABASE_URL` | `https://czsprlynepwebxankjvg.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | From Supabase Dashboard |
-| `GEMINI_API_KEY` | From Google AI Studio |
+| `OPENROUTER_API_KEY` | From OpenRouter Dashboard |
 
 The scraper will run every 15 minutes automatically.
 

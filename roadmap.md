@@ -6,7 +6,7 @@
 
 ## Phase 1: MVP Launch ✅ (Current)
 - Core Reddit scraping via GitHub Actions
-- Gemini 2.0 Flash lead scoring
+- AI lead scoring (MiMo-V2-Flash via OpenRouter)
 - Inbox-style dashboard
 - Dodo Payments subscriptions
 - Google & Magic Link auth
@@ -84,7 +84,7 @@ Help users build Reddit karma to make their accounts look more authentic.
 
 **How it works:**
 1. Identify top posts in user's tracked subreddits
-2. Generate generic "nice" comments using Gemini
+2. Generate generic "nice" comments using AI
 3. Queue comments for user approval
 4. User posts manually to build karma
 

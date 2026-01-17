@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
     title: "RedditLeadAI | Find High-Intent Leads on Reddit",
-    description: "Monitor subreddits, identify potential customers asking for recommendations, and get AI-generated replies. Powered by Gemini 2.0 Flash.",
+    description: "Monitor subreddits, identify potential customers asking for recommendations, and get AI-generated replies. Powered by AI.",
     keywords: ["reddit", "lead generation", "AI", "sales", "marketing", "SaaS"],
     authors: [{ name: "RedditLeadAI" }],
     openGraph: {

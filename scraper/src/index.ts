@@ -1,14 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
-import { GoogleGenerativeAI } from '@google/generative-ai'
 
 // Environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY!
+
+// OpenRouter configuration
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions'
+const OPENROUTER_MODEL = 'xiaomi/mimo-v2-flash:free'
 
 // Initialize clients
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
 
 const USER_AGENT = 'RedditLeadAI/1.0 (github.com/reddit-lead-ai)'
 
@@ -38,7 +40,7 @@ interface TrackerWithSubreddit {
     } | null
 }
 
-interface GeminiAnalysis {
+interface AIAnalysis {
     score: number
     reason: string
     draft_reply: string
@@ -93,13 +95,11 @@ async function searchRedditGlobally(query: string): Promise<RedditPost[]> {
     }
 }
 
-async function analyzePostWithGemini(
+async function analyzePostWithAI(
     post: RedditPost,
     productName: string,
     productDescription: string
-): Promise<GeminiAnalysis | null> {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' })
-
+): Promise<AIAnalysis | null> {
     const prompt = `You are analyzing a Reddit post to determine if it's a good sales lead for a product.
 
 PRODUCT: ${productName}
@@ -132,19 +132,44 @@ Respond ONLY with valid JSON, no markdown or explanation:
 {"score": number, "reason": "string", "draft_reply": "string"}`
 
     try {
-        const result = await model.generateContent(prompt)
-        const text = result.response.text()
+        const response = await fetch(OPENROUTER_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                'HTTP-Referer': 'https://reddit-lead-ai.vercel.app',
+                'X-Title': 'RedditLeadAI',
+            },
+            body: JSON.stringify({
+                model: OPENROUTER_MODEL,
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt,
+                    },
+                ],
+                reasoning: { enabled: true },
+            }),
+        })
+
+        if (!response.ok) {
+            console.error('OpenRouter API error:', response.status, await response.text())
+            return null
+        }
+
+        const data = await response.json()
+        const text = data.choices?.[0]?.message?.content || ''
 
         // Extract JSON from response
         const jsonMatch = text.match(/\{[\s\S]*\}/)
         if (!jsonMatch) {
-            console.error('No JSON found in Gemini response')
+            console.error('No JSON found in AI response')
             return null
         }
 
-        return JSON.parse(jsonMatch[0]) as GeminiAnalysis
+        return JSON.parse(jsonMatch[0]) as AIAnalysis
     } catch (error) {
-        console.error('Gemini analysis error:', error)
+        console.error('AI analysis error:', error)
         return null
     }
 }
@@ -182,7 +207,7 @@ async function createLeadIfNew(
     userId: string,
     trackerId: string,
     post: RedditPost,
-    analysis: GeminiAnalysis
+    analysis: AIAnalysis
 ): Promise<boolean> {
     // Check if lead already exists
     const { data: existingLead } = await supabase
@@ -236,7 +261,7 @@ async function processSubredditPosts(tracker: TrackerWithSubreddit): Promise<num
             continue
         }
 
-        const analysis = await analyzePostWithGemini(
+        const analysis = await analyzePostWithAI(
             post,
             tracker.product_name || 'Unknown Product',
             tracker.product_description || 'No description provided'
@@ -277,7 +302,7 @@ async function processGlobalSearch(tracker: TrackerWithSubreddit): Promise<numbe
         for (const post of posts) {
             await storePost(post)
 
-            const analysis = await analyzePostWithGemini(
+            const analysis = await analyzePostWithAI(
                 post,
                 tracker.product_name || 'Unknown Product',
                 tracker.product_description || 'No description provided'
