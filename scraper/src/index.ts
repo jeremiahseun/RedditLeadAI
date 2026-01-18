@@ -35,6 +35,7 @@ interface TrackerWithSubreddit {
     id: string
     user_id: string
     keywords: string[]
+    competitors: string[]
     product_name: string | null
     product_description: string | null
     subreddit: {
@@ -102,7 +103,8 @@ async function searchRedditGlobally(query: string): Promise<RedditPost[]> {
 async function analyzeWithGemini(
     post: RedditPost,
     productName: string,
-    productDescription: string
+    productDescription: string,
+    competitors: string[] = []
 ): Promise<AIAnalysis | null> {
     if (!genAI) {
         console.log('⚠️ Gemini not configured (missing GOOGLE_API_KEY)')
@@ -112,7 +114,9 @@ async function analyzeWithGemini(
     const prompt = `You are analyzing a Reddit post to determine if it's a good sales lead for a product.
 
 PRODUCT: ${productName}
+PRODUCT: ${productName}
 PRODUCT DESCRIPTION: ${productDescription}
+COMPETITORS: ${competitors.length > 0 ? competitors.join(', ') : 'None listed'}
 
 POST TITLE: ${post.title}
 POST BODY: ${post.selftext || '(no body text)'}
@@ -120,7 +124,7 @@ SUBREDDIT: r/${post.subreddit}
 
 Analyze this post and respond with a JSON object containing:
 1. "score": Integer 0-100 indicating how likely this person could benefit from the product
-   - 80-100: Explicitly asking for recommendations or expressing pain point the product solves
+   - 80-100: Explicitly asking for recommendations, expressing pain point the product solves, OR expressing frustration with a listed COMPETITOR (High Priority!).
    - 60-79: Discussing related problems or showing interest in similar solutions
    - 40-59: Tangentially related topic
    - 0-39: Not relevant, ads, memes, or off-topic
@@ -164,12 +168,14 @@ Respond ONLY with valid JSON, no markdown or explanation:
 async function analyzePostWithAI(
     post: RedditPost,
     productName: string,
-    productDescription: string
+    productDescription: string,
+    competitors: string[] = []
 ): Promise<AIAnalysis | null> {
     const prompt = `You are analyzing a Reddit post to determine if it's a good sales lead for a product.
 
 PRODUCT: ${productName}
 PRODUCT DESCRIPTION: ${productDescription}
+COMPETITORS: ${competitors.length > 0 ? competitors.join(', ') : 'None listed'}
 
 POST TITLE: ${post.title}
 POST BODY: ${post.selftext || '(no body text)'}
@@ -177,7 +183,7 @@ SUBREDDIT: r/${post.subreddit}
 
 Analyze this post and respond with a JSON object containing:
 1. "score": Integer 0-100 indicating how likely this person could benefit from the product
-   - 80-100: Explicitly asking for recommendations or expressing pain point the product solves
+   - 80-100: Explicitly asking for recommendations, expressing pain point the product solves, OR expressing frustration with a listed COMPETITOR (High Priority!).
    - 60-79: Discussing related problems or showing interest in similar solutions
    - 40-59: Tangentially related topic
    - 0-39: Not relevant, ads, memes, or off-topic
@@ -194,7 +200,7 @@ Analyze this post and respond with a JSON object containing:
 
 IMPORTANT:
 - Ignore posts that are ads, memes, or simple questions unrelated to the product category
-- Only give high scores (70+) if the post clearly shows purchase intent or pain points
+- Only give high scores (70+) if the post clearly shows purchase intent, pain points, or dissatisfaction with COMPETITORS
 
 Respond ONLY with valid JSON, no markdown or explanation:
 {"score": number, "reason": "string", "draft_reply": "string", "sentiment": "positive|neutral|negative"}`
@@ -228,7 +234,7 @@ Respond ONLY with valid JSON, no markdown or explanation:
             // Fallback to Gemini for AI-related errors
             if (status === 400 || status === 402 || status === 429 || status >= 500) {
                 console.log('🔄 Falling back to Gemini...')
-                return await analyzeWithGemini(post, productName, productDescription)
+                return await analyzeWithGemini(post, productName, productDescription, competitors)
             }
             return null
         }
@@ -248,7 +254,7 @@ Respond ONLY with valid JSON, no markdown or explanation:
         console.error('AI analysis error:', error)
         // Try Gemini as fallback for any error
         console.log('🔄 Falling back to Gemini...')
-        return await analyzeWithGemini(post, productName, productDescription)
+        return await analyzeWithGemini(post, productName, productDescription, competitors)
     }
 }
 
@@ -344,7 +350,8 @@ async function processSubredditPosts(tracker: TrackerWithSubreddit): Promise<num
         const analysis = await analyzePostWithAI(
             post,
             tracker.product_name || 'Unknown Product',
-            tracker.product_description || 'No description provided'
+            tracker.product_description || 'No description provided',
+            tracker.competitors
         )
 
         if (analysis) {
@@ -374,10 +381,18 @@ async function processGlobalSearch(tracker: TrackerWithSubreddit): Promise<numbe
 
     let leadsCreated = 0
 
-    // Search for each keyword globally
-    for (const keyword of tracker.keywords.slice(0, 3)) { // Limit to 3 to avoid rate limits
-        const posts = await searchRedditGlobally(keyword)
-        console.log(`   "${keyword}": ${posts.length} posts found`)
+    // Combine keywords and competitors for search, limited to avoid rate limits
+    const searchTerms = [
+        ...tracker.keywords,
+        ...tracker.competitors.map(c => `"${c}"`) // Quote competitors for exact match
+    ].slice(0, 5) // Increased limit slightly since we have more terms
+
+    console.log(`🌍 Global search for: ${searchTerms.join(', ')}...`)
+
+    // Search for each term globally
+    for (const term of searchTerms) {
+        const posts = await searchRedditGlobally(term)
+        console.log(`   "${term}": ${posts.length} posts found`)
 
         for (const post of posts) {
             await storePost(post)
@@ -385,7 +400,8 @@ async function processGlobalSearch(tracker: TrackerWithSubreddit): Promise<numbe
             const analysis = await analyzePostWithAI(
                 post,
                 tracker.product_name || 'Unknown Product',
-                tracker.product_description || 'No description provided'
+                tracker.product_description || 'No description provided',
+                tracker.competitors
             )
 
             if (analysis) {
@@ -414,6 +430,7 @@ async function main(): Promise<void> {
             id,
             user_id,
             keywords,
+            competitors,
             product_name,
             product_description,
             subreddit:subreddits(id, name)
@@ -444,6 +461,7 @@ async function main(): Promise<void> {
             id: rawTracker.id,
             user_id: rawTracker.user_id,
             keywords: rawTracker.keywords || [],
+            competitors: rawTracker.competitors || [],
             product_name: rawTracker.product_name,
             product_description: rawTracker.product_description,
             subreddit: subredditData,

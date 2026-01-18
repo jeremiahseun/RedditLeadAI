@@ -25,6 +25,7 @@ export interface UserTracker {
     user_id: string
     subreddit_id: string
     keywords: string[]
+    competitors: string[]
     product_name: string | null
     product_description: string | null
     is_active: boolean

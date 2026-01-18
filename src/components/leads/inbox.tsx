@@ -186,6 +186,14 @@ function LeadCard({ lead, isExpanded, isCopied, onToggle, onCopy, onArchive, onC
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-purple-400 font-medium">r/{post.subreddit}</span>
+                        {lead.sentiment && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${lead.sentiment === 'positive' ? 'bg-green-500/20 text-green-400' :
+                                    lead.sentiment === 'negative' ? 'bg-red-500/20 text-red-400' :
+                                        'bg-slate-500/20 text-slate-400'
+                                }`}>
+                                {lead.sentiment}
+                            </span>
+                        )}
                         {!lead.is_read && <span className="w-2 h-2 bg-purple-500 rounded-full" />}
                     </div>
                     <h3 className="text-white font-medium line-clamp-2">{post.title}</h3>
@@ -242,8 +250,8 @@ function LeadCard({ lead, isExpanded, isCopied, onToggle, onCopy, onArchive, onC
                         <button
                             onClick={onConvert}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${lead.is_converted
-                                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                                    : 'text-slate-400 hover:text-green-400 hover:bg-green-500/10'
+                                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                : 'text-slate-400 hover:text-green-400 hover:bg-green-500/10'
                                 }`}
                         >
                             <CheckCircle className="w-4 h-4" />

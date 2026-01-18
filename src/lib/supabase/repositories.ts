@@ -170,6 +170,7 @@ export class TrackerRepository {
         productName: string
         productDescription: string
         keywords: string[]
+        competitors?: string[]
     }): Promise<UserTracker | null> {
         const supabase = await createClient()
         const { data } = await supabase
@@ -180,6 +181,7 @@ export class TrackerRepository {
                 product_name: tracker.productName,
                 product_description: tracker.productDescription,
                 keywords: tracker.keywords,
+                competitors: tracker.competitors || [],
             })
             .select()
             .single()

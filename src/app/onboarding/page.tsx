@@ -38,6 +38,8 @@ export default function OnboardingPage() {
     const [discoveredSubreddits, setDiscoveredSubreddits] = useState<DiscoveredSubreddit[]>([])
     const [keywords, setKeywords] = useState<string[]>([])
     const [keywordInput, setKeywordInput] = useState('')
+    const [competitors, setCompetitors] = useState<string[]>([])
+    const [competitorInput, setCompetitorInput] = useState('')
     const [enableGlobalSearch, setEnableGlobalSearch] = useState(true)
 
     // Product Analysis State
@@ -122,6 +124,17 @@ export default function OnboardingPage() {
         setKeywords(keywords.filter(k => k !== keyword))
     }
 
+    const handleAddCompetitor = () => {
+        if (competitorInput.trim() && !competitors.includes(competitorInput.trim())) {
+            setCompetitors([...competitors, competitorInput.trim()])
+            setCompetitorInput('')
+        }
+    }
+
+    const handleRemoveCompetitor = (competitor: string) => {
+        setCompetitors(competitors.filter(c => c !== competitor))
+    }
+
     const toggleSubreddit = (name: string) => {
         if (selectedSubreddits.includes(name)) {
             setSelectedSubreddits(selectedSubreddits.filter(s => s !== name))
@@ -138,48 +151,138 @@ export default function OnboardingPage() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Not authenticated')
 
+            // 1. Ensure Profile Exists (fixes potential FK errors)
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', user.id)
+                .single()
+
+            if (!profile) {
+                console.log('Profile missing, creating default profile...')
+                const { error: profileError } = await supabase
+                    .from('profiles')
+                    .insert({
+                        id: user.id,
+                        email: user.email!,
+                        full_name: user.user_metadata?.full_name || '',
+                        subscription_status: 'free',
+                        credits_remaining: 5,
+                    })
+
+                if (profileError) {
+                    console.error('Error creating profile:', profileError)
+                    throw new Error(`Failed to create profile: ${profileError.message}`)
+                }
+            }
+
             // Create trackers for selected subreddits
             for (const subredditName of selectedSubreddits) {
-                const { data: subreddit } = await supabase
+                const { data: subreddit, error: subError } = await supabase
                     .from('subreddits')
                     .upsert({ name: subredditName.toLowerCase() }, { onConflict: 'name' })
                     .select()
                     .single()
 
+                if (subError) {
+                    console.error('Error upserting subreddit:', subError)
+                    continue
+                }
+
                 if (subreddit) {
-                    await supabase
+                    // Check if tracker already exists to avoid duplicates
+                    const { data: existingTracker } = await supabase
                         .from('user_trackers')
-                        .insert({
-                            user_id: user.id,
-                            subreddit_id: subreddit.id,
-                            product_name: productName,
-                            product_description: productDescription,
-                            keywords: keywords,
-                            is_active: true,
-                        })
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .eq('subreddit_id', subreddit.id)
+                        .maybeSingle()
+
+                    if (!existingTracker) {
+                        const { error: trackerError } = await supabase
+                            .from('user_trackers')
+                            .insert({
+                                user_id: user.id,
+                                subreddit_id: subreddit.id,
+                                product_name: productName,
+                                product_description: productDescription,
+                                keywords: keywords,
+                                competitors: competitors,
+                                is_active: true,
+                            })
+
+                        if (trackerError) {
+                            console.error('Error inserting tracker:', trackerError)
+                            throw new Error(`Failed to create tracker: ${trackerError.message}`)
+                        }
+                    } else {
+                        // Update existing tracker
+                        const { error: updateError } = await supabase
+                            .from('user_trackers')
+                            .update({
+                                product_name: productName,
+                                product_description: productDescription,
+                                keywords: keywords,
+                                competitors: competitors,
+                                is_active: true,
+                            })
+                            .eq('id', existingTracker.id)
+
+                        if (updateError) console.error('Error updating tracker:', updateError)
+                    }
                 }
             }
 
             // If global search enabled and no subreddits selected, create a "global" tracker
             if (enableGlobalSearch && selectedSubreddits.length === 0) {
                 // Create a placeholder for global search
-                const { data: globalSub } = await supabase
+                const { data: globalSub, error: globalError } = await supabase
                     .from('subreddits')
                     .upsert({ name: '_global_search' }, { onConflict: 'name' })
                     .select()
                     .single()
 
+                if (globalError) {
+                    console.error('Error upserting global subreddit:', globalError)
+                }
+
                 if (globalSub) {
-                    await supabase
+                    const { data: existingGlobal } = await supabase
                         .from('user_trackers')
-                        .insert({
-                            user_id: user.id,
-                            subreddit_id: globalSub.id,
-                            product_name: productName,
-                            product_description: productDescription,
-                            keywords: keywords,
-                            is_active: true,
-                        })
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .eq('subreddit_id', globalSub.id)
+                        .maybeSingle()
+
+                    if (!existingGlobal) {
+                        const { error: globalTrackerError } = await supabase
+                            .from('user_trackers')
+                            .insert({
+                                user_id: user.id,
+                                subreddit_id: globalSub.id,
+                                product_name: productName,
+                                product_description: productDescription,
+                                keywords: keywords,
+                                competitors: competitors,
+                                is_active: true,
+                            })
+
+                        if (globalTrackerError) {
+                            console.error('Error inserting global tracker:', globalTrackerError)
+                            throw new Error(`Failed to create global tracker: ${globalTrackerError.message}`)
+                        }
+                    } else {
+                        await supabase
+                            .from('user_trackers')
+                            .update({
+                                product_name: productName,
+                                product_description: productDescription,
+                                keywords: keywords,
+                                competitors: competitors,
+                                is_active: true,
+                            })
+                            .eq('id', existingGlobal.id)
+                    }
                 }
             }
 
@@ -187,7 +290,7 @@ export default function OnboardingPage() {
             router.push('/dashboard')
         } catch (error) {
             console.error('Onboarding error:', error)
-            toast.error('Something went wrong. Please try again.')
+            toast.error(error instanceof Error ? error.message : 'Something went wrong. Please try again.')
         } finally {
             setIsLoading(false)
         }
@@ -443,6 +546,47 @@ export default function OnboardingPage() {
                             <p className="text-sm text-slate-500 text-center">
                                 Examples: &quot;looking for&quot;, &quot;recommend&quot;, &quot;alternative to&quot;, &quot;best tool for&quot;
                             </p>
+
+                            <div className="pt-6 border-t border-slate-700">
+                                <div className="text-center mb-6">
+                                    <h2 className="text-xl font-bold text-white">Track Competitors (Optional)</h2>
+                                    <p className="text-slate-400 mt-1">We&apos;ll look for people complaining about them</p>
+                                </div>
+
+                                <div className="flex gap-2 mb-4">
+                                    <input
+                                        type="text"
+                                        value={competitorInput}
+                                        onChange={(e) => setCompetitorInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleAddCompetitor()}
+                                        placeholder="Add a competitor name"
+                                        className="flex-1 bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                    <button
+                                        onClick={handleAddCompetitor}
+                                        className="px-4 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl transition-all"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 min-h-[50px]">
+                                    {competitors.map((competitor) => (
+                                        <span
+                                            key={competitor}
+                                            className="inline-flex items-center gap-1 px-3 py-1 bg-red-500/20 text-red-300 rounded-full text-sm"
+                                        >
+                                            {competitor}
+                                            <button
+                                                onClick={() => handleRemoveCompetitor(competitor)}
+                                                className="hover:text-white"
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     )}
 
