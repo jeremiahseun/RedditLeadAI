@@ -1,15 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const supabase_js_1 = require("@supabase/supabase-js");
+const generative_ai_1 = require("@google/generative-ai");
 // Environment variables
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 // OpenRouter configuration
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'xiaomi/mimo-v2-flash:free';
 // Initialize clients
 const supabase = (0, supabase_js_1.createClient)(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const genAI = GOOGLE_API_KEY ? new generative_ai_1.GoogleGenerativeAI(GOOGLE_API_KEY) : null;
 const USER_AGENT = 'RedditLeadAI/1.0 (github.com/reddit-lead-ai)';
 /**
  * Fetch posts from a specific subreddit
@@ -52,6 +55,57 @@ async function searchRedditGlobally(query) {
     catch (error) {
         console.error('Reddit search error:', error);
         return [];
+    }
+}
+async function analyzeWithGemini(post, productName, productDescription) {
+    if (!genAI) {
+        console.log('⚠️ Gemini not configured (missing GOOGLE_API_KEY)');
+        return null;
+    }
+    const prompt = `You are analyzing a Reddit post to determine if it's a good sales lead for a product.
+
+PRODUCT: ${productName}
+PRODUCT DESCRIPTION: ${productDescription}
+
+POST TITLE: ${post.title}
+POST BODY: ${post.selftext || '(no body text)'}
+SUBREDDIT: r/${post.subreddit}
+
+Analyze this post and respond with a JSON object containing:
+1. "score": Integer 0-100 indicating how likely this person could benefit from the product
+   - 80-100: Explicitly asking for recommendations or expressing pain point the product solves
+   - 60-79: Discussing related problems or showing interest in similar solutions
+   - 40-59: Tangentially related topic
+   - 0-39: Not relevant, ads, memes, or off-topic
+
+2. "reason": One sentence explaining the score
+
+3. "draft_reply": A 2-3 sentence helpful, non-spammy reply that could subtly introduce the product.
+   - Be conversational and helpful first
+   - Don't use phrases like "I recommend" or "You should try"
+   - Sound like a peer who found something useful
+   - Never mention being AI or automated
+
+Respond ONLY with valid JSON, no markdown or explanation:
+{"score": number, "reason": "string", "draft_reply": "string"}`;
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+        const result = await model.generateContent(prompt);
+        const text = result.response.text();
+        const cleanedResponse = text
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            console.error('No JSON found in Gemini response');
+            return null;
+        }
+        return JSON.parse(jsonMatch[0]);
+    }
+    catch (error) {
+        console.error('Gemini analysis error:', error);
+        return null;
     }
 }
 async function analyzePostWithAI(post, productName, productDescription) {
@@ -105,8 +159,15 @@ Respond ONLY with valid JSON, no markdown or explanation:
                 reasoning: { enabled: true },
             }),
         });
+        // Check for AI-related errors that should trigger fallback
         if (!response.ok) {
-            console.error('OpenRouter API error:', response.status, await response.text());
+            const status = response.status;
+            console.error(`OpenRouter API error: ${status}`);
+            // Fallback to Gemini for AI-related errors
+            if (status === 400 || status === 402 || status === 429 || status >= 500) {
+                console.log('🔄 Falling back to Gemini...');
+                return await analyzeWithGemini(post, productName, productDescription);
+            }
             return null;
         }
         const data = await response.json();
@@ -121,7 +182,9 @@ Respond ONLY with valid JSON, no markdown or explanation:
     }
     catch (error) {
         console.error('AI analysis error:', error);
-        return null;
+        // Try Gemini as fallback for any error
+        console.log('🔄 Falling back to Gemini...');
+        return await analyzeWithGemini(post, productName, productDescription);
     }
 }
 function matchesKeywords(post, keywords) {
