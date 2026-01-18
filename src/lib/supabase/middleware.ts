@@ -45,10 +45,17 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     // Protected routes check
-    const isAuthRoute = request.nextUrl.pathname.startsWith('/login') ||
-        request.nextUrl.pathname.startsWith('/auth')
+    const isCallbackRoute = request.nextUrl.pathname === '/auth/callback'
+    const isLoginRoute = request.nextUrl.pathname.startsWith('/login')
+    const isAuthRoute = request.nextUrl.pathname.startsWith('/auth')
     const isDashboardRoute = request.nextUrl.pathname.startsWith('/dashboard') ||
         request.nextUrl.pathname.startsWith('/onboarding')
+
+    // Allow callback route to process without redirect
+    // The callback route handles the code exchange itself
+    if (isCallbackRoute) {
+        return supabaseResponse
+    }
 
     if (!user && isDashboardRoute) {
         // No user, redirect to login page
@@ -57,7 +64,7 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
-    if (user && isAuthRoute) {
+    if (user && (isLoginRoute || isAuthRoute)) {
         // User is logged in, redirect away from auth pages
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'
