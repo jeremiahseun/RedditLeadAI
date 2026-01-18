@@ -1,15 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, ExternalLink, Check, Archive, ChevronDown, ChevronUp } from 'lucide-react'
+import { Copy, ExternalLink, Check, Archive, ChevronDown, ChevronUp, Loader2, Target } from 'lucide-react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 import type { LeadWithPost } from '@/types'
 
 interface LeadsInboxProps {
     initialLeads: LeadWithPost[]
+    hasTrackers: boolean
 }
 
-export function LeadsInbox({ initialLeads }: LeadsInboxProps) {
+export function LeadsInbox({ initialLeads, hasTrackers }: LeadsInboxProps) {
     const [leads, setLeads] = useState(initialLeads)
     const [expandedLead, setExpandedLead] = useState<string | null>(null)
     const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -66,7 +68,7 @@ export function LeadsInbox({ initialLeads }: LeadsInboxProps) {
     }
 
     if (leads.length === 0) {
-        return <EmptyState />
+        return <EmptyState hasTrackers={hasTrackers} />
     }
 
     return (
@@ -89,16 +91,44 @@ export function LeadsInbox({ initialLeads }: LeadsInboxProps) {
     )
 }
 
-function EmptyState() {
+function EmptyState({ hasTrackers }: { hasTrackers: boolean }) {
+    if (hasTrackers) {
+        return (
+            <div className="bg-slate-900/50 border border-purple-500/30 rounded-2xl p-12 text-center">
+                <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4 relative">
+                    <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                    <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" />
+                </div>
+                <h3 className="text-xl font-semibold text-white mb-2">Actively searching...</h3>
+                <p className="text-slate-400 max-w-md mx-auto">
+                    Our AI is scanning Reddit for leads matching your trackers. New leads typically appear within 15-30 minutes.
+                </p>
+                <Link
+                    href="/dashboard/trackers"
+                    className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 mt-4 text-sm"
+                >
+                    <Target className="w-4 h-4" />
+                    View your trackers
+                </Link>
+            </div>
+        )
+    }
+
     return (
         <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-12 text-center">
             <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Archive className="w-8 h-8 text-slate-500" />
             </div>
             <h3 className="text-xl font-semibold text-white mb-2">No leads yet</h3>
-            <p className="text-slate-400">
-                Once we find matching posts in your tracked subreddits, they&apos;ll appear here.
+            <p className="text-slate-400 mb-6">
+                Set up a tracker to start finding leads on Reddit.
             </p>
+            <Link
+                href="/onboarding"
+                className="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-xl font-medium transition-all"
+            >
+                Create Tracker
+            </Link>
         </div>
     )
 }

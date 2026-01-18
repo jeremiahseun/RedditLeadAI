@@ -1,4 +1,4 @@
-import { LeadRepository, ProfileRepository } from '@/lib/supabase'
+import { LeadRepository, TrackerRepository } from '@/lib/supabase'
 import { AuthService } from '@/lib/supabase/auth'
 import { LeadsInbox } from '@/components/leads/inbox'
 
@@ -6,9 +6,10 @@ export default async function DashboardPage() {
     const user = await AuthService.getCurrentUser()
     if (!user) return null
 
-    const [leads, unreadCount] = await Promise.all([
+    const [leads, unreadCount, hasTrackers] = await Promise.all([
         LeadRepository.getForUser(user.id, { limit: 50 }),
         LeadRepository.getUnreadCount(user.id),
+        TrackerRepository.hasTrackers(user.id),
     ])
 
     return (
@@ -20,7 +21,7 @@ export default async function DashboardPage() {
                 </p>
             </div>
 
-            <LeadsInbox initialLeads={leads} />
+            <LeadsInbox initialLeads={leads} hasTrackers={hasTrackers} />
         </div>
     )
 }
