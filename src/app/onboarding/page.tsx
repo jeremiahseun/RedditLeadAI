@@ -155,6 +155,7 @@ export default function OnboardingPage() {
                             product_name: productName,
                             product_description: productDescription,
                             keywords: keywords,
+                            is_active: true,
                         })
                 }
             }
@@ -177,6 +178,7 @@ export default function OnboardingPage() {
                             product_name: productName,
                             product_description: productDescription,
                             keywords: keywords,
+                            is_active: true,
                         })
                 }
             }

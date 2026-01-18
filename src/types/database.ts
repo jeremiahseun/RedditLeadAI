@@ -57,8 +57,11 @@ export interface Lead {
     ai_score: number
     ai_reason: string | null
     draft_reply: string | null
+    sentiment: 'positive' | 'neutral' | 'negative' | null
     is_read: boolean
     is_archived: boolean
+    is_converted: boolean
+    converted_at: string | null
     created_at: string
 }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, ExternalLink, Check, Archive, ChevronDown, ChevronUp, Loader2, Target } from 'lucide-react'
+import { Copy, ExternalLink, Check, Archive, ChevronDown, ChevronUp, Loader2, Target, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import type { LeadWithPost } from '@/types'
@@ -67,6 +67,30 @@ export function LeadsInbox({ initialLeads, hasTrackers }: LeadsInboxProps) {
         }
     }
 
+    const handleConvert = async (leadId: string, currentState: boolean) => {
+        // Optimistic update
+        setLeads(prev =>
+            prev.map(lead => lead.id === leadId ? { ...lead, is_converted: !currentState } : lead)
+        )
+        toast.success(currentState ? 'Conversion removed' : 'Lead marked as converted!')
+
+        try {
+            const response = await fetch('/api/leads/convert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadId, action: currentState ? 'unconvert' : 'convert' }),
+            })
+
+            if (!response.ok) throw new Error('Failed to update')
+        } catch {
+            // Revert on error
+            setLeads(prev =>
+                prev.map(lead => lead.id === leadId ? { ...lead, is_converted: currentState } : lead)
+            )
+            toast.error('Failed to update lead')
+        }
+    }
+
     if (leads.length === 0) {
         return <EmptyState hasTrackers={hasTrackers} />
     }
@@ -85,6 +109,7 @@ export function LeadsInbox({ initialLeads, hasTrackers }: LeadsInboxProps) {
                     }}
                     onCopy={(text) => handleCopyReply(lead.id, text)}
                     onArchive={() => handleArchive(lead.id)}
+                    onConvert={() => handleConvert(lead.id, lead.is_converted)}
                 />
             ))}
         </div>
@@ -140,9 +165,10 @@ interface LeadCardProps {
     onToggle: () => void
     onCopy: (text: string) => void
     onArchive: () => void
+    onConvert: () => void
 }
 
-function LeadCard({ lead, isExpanded, isCopied, onToggle, onCopy, onArchive }: LeadCardProps) {
+function LeadCard({ lead, isExpanded, isCopied, onToggle, onCopy, onArchive, onConvert }: LeadCardProps) {
     const post = lead.post
 
     return (
@@ -212,6 +238,17 @@ function LeadCard({ lead, isExpanded, isCopied, onToggle, onCopy, onArchive }: L
                             <ExternalLink className="w-4 h-4" />
                             Open on Reddit
                         </a>
+
+                        <button
+                            onClick={onConvert}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-all ${lead.is_converted
+                                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                    : 'text-slate-400 hover:text-green-400 hover:bg-green-500/10'
+                                }`}
+                        >
+                            <CheckCircle className="w-4 h-4" />
+                            {lead.is_converted ? 'Converted' : 'Mark Converted'}
+                        </button>
 
                         <button
                             onClick={onArchive}

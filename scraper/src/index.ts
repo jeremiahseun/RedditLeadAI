@@ -47,6 +47,7 @@ interface AIAnalysis {
     score: number
     reason: string
     draft_reply: string
+    sentiment: 'positive' | 'neutral' | 'negative'
 }
 
 /**
@@ -132,8 +133,10 @@ Analyze this post and respond with a JSON object containing:
    - Sound like a peer who found something useful
    - Never mention being AI or automated
 
+4. "sentiment": The overall sentiment of the post ("positive", "neutral", or "negative")
+
 Respond ONLY with valid JSON, no markdown or explanation:
-{"score": number, "reason": "string", "draft_reply": "string"}`
+{"score": number, "reason": "string", "draft_reply": "string", "sentiment": "positive|neutral|negative"}`
 
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
@@ -187,12 +190,14 @@ Analyze this post and respond with a JSON object containing:
    - Sound like a peer who found something useful
    - Never mention being AI or automated
 
+4. "sentiment": The overall sentiment of the post ("positive", "neutral", or "negative")
+
 IMPORTANT:
 - Ignore posts that are ads, memes, or simple questions unrelated to the product category
 - Only give high scores (70+) if the post clearly shows purchase intent or pain points
 
 Respond ONLY with valid JSON, no markdown or explanation:
-{"score": number, "reason": "string", "draft_reply": "string"}`
+{"score": number, "reason": "string", "draft_reply": "string", "sentiment": "positive|neutral|negative"}`
 
     try {
         const response = await fetch(OPENROUTER_API_URL, {
@@ -303,8 +308,10 @@ async function createLeadIfNew(
             ai_score: analysis.score,
             ai_reason: analysis.reason,
             draft_reply: analysis.draft_reply,
+            sentiment: analysis.sentiment || 'neutral',
             is_read: false,
             is_archived: false,
+            is_converted: false,
         })
         console.log(`✅ Lead created (score: ${analysis.score}): ${post.title.substring(0, 50)}...`)
         return true

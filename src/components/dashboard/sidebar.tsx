@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Inbox, Settings, Target, CreditCard, LogOut, ChevronUp } from 'lucide-react'
+import { Inbox, Settings, Target, CreditCard, LogOut, ChevronUp, BarChart3 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
 
@@ -17,6 +17,7 @@ interface DashboardSidebarProps {
 const navItems = [
     { href: '/dashboard', label: 'Leads', icon: Inbox },
     { href: '/dashboard/trackers', label: 'Trackers', icon: Target },
+    { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/dashboard/billing', label: 'Billing', icon: CreditCard },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
@@ -65,8 +66,8 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
                                 <Link
                                     href={item.href}
                                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive
-                                            ? 'bg-purple-500/20 text-purple-400'
-                                            : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                        ? 'bg-purple-500/20 text-purple-400'
+                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                                         }`}
                                 >
                                     <item.icon className="w-5 h-5" />
