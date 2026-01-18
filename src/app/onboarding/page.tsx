@@ -40,6 +40,43 @@ export default function OnboardingPage() {
     const [keywordInput, setKeywordInput] = useState('')
     const [enableGlobalSearch, setEnableGlobalSearch] = useState(true)
 
+    // Product Analysis State
+    const [productUrl, setProductUrl] = useState('')
+    const [isAnalyzing, setIsAnalyzing] = useState(false)
+
+    const handleAnalyzeProduct = async () => {
+        if (!productUrl) return
+
+        setIsAnalyzing(true)
+        try {
+            const response = await fetch('/api/analyze-product', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: productUrl }),
+            })
+
+            const data = await response.json()
+
+            if (response.ok) {
+                if (data.productName) setProductName(data.productName)
+                if (data.productDescription) setProductDescription(data.productDescription)
+                if (data.keywords && Array.isArray(data.keywords)) {
+                    // Combine existing keywords with new ones, avoiding duplicates
+                    const newKeywords = [...keywords, ...data.keywords].filter((item, index, arr) => arr.indexOf(item) === index)
+                    setKeywords(newKeywords)
+                }
+                toast.success('Product analyzed successfully!')
+            } else {
+                toast.error(data.error || 'Failed to analyze product')
+            }
+        } catch (error) {
+            console.error('Analysis error:', error)
+            toast.error('Something went wrong')
+        } finally {
+            setIsAnalyzing(false)
+        }
+    }
+
     // Discover subreddits when moving to step 2
     const discoverSubreddits = useCallback(async () => {
         if (!productName && !productDescription) return
@@ -185,6 +222,37 @@ export default function OnboardingPage() {
                                 </div>
                                 <h2 className="text-2xl font-bold text-white">Tell us about your product</h2>
                                 <p className="text-slate-400 mt-2">This helps our AI find relevant leads</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Product Website (Optional)
+                                </label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="url"
+                                        value={productUrl}
+                                        onChange={(e) => setProductUrl(e.target.value)}
+                                        placeholder="https://example.com"
+                                        className="flex-1 bg-slate-900/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    />
+                                    <button
+                                        onClick={handleAnalyzeProduct}
+                                        disabled={isAnalyzing || !productUrl}
+                                        type="button"
+                                        className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-purple-400 font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    >
+                                        {isAnalyzing ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Sparkles className="w-4 h-4" />
+                                        )}
+                                        Auto-fill
+                                    </button>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-2">
+                                    We&apos;ll analyze your landing page to automatically fill in the details below.
+                                </p>
                             </div>
 
                             <div>

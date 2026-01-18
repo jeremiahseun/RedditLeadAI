@@ -60,7 +60,7 @@ export default function LoginPage() {
         setIsLoading(true)
         setError(null)
 
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -72,6 +72,9 @@ export default function LoginPage() {
 
         if (error) {
             setError(error.message)
+        } else if (data.session) {
+            // Email confirmation is disabled, redirect immediately
+            window.location.href = '/dashboard'
         } else {
             setError('Check your email to confirm your account')
             setIsSubmitted(true)
