@@ -15,7 +15,36 @@ const OPENROUTER_MODEL = 'xiaomi/mimo-v2-flash:free'
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 const genAI = GOOGLE_API_KEY ? new GoogleGenerativeAI(GOOGLE_API_KEY) : null
 
-const USER_AGENT = 'RedditLeadAI/1.0 (github.com/reddit-lead-ai)'
+const USER_AGENTS = [
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+]
+
+function getRandomUserAgent(): string {
+    return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
+}
+
+function getBrowserHeaders() {
+    return {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1'
+    }
+}
 
 interface RedditPost {
     id: string
@@ -59,7 +88,7 @@ async function fetchSubredditPosts(subredditName: string): Promise<RedditPost[]>
 
     try {
         const response = await fetch(url, {
-            headers: { 'User-Agent': USER_AGENT },
+            headers: getBrowserHeaders(),
         })
 
         if (!response.ok) {
@@ -84,7 +113,7 @@ async function searchRedditGlobally(query: string): Promise<RedditPost[]> {
 
     try {
         const response = await fetch(url, {
-            headers: { 'User-Agent': USER_AGENT },
+            headers: getBrowserHeaders(),
         })
 
         if (!response.ok) {
@@ -359,8 +388,9 @@ async function processSubredditPosts(tracker: TrackerWithSubreddit): Promise<num
             if (created) leadsCreated++
         }
 
-        // Rate limit delay
-        await new Promise(resolve => setTimeout(resolve, 500))
+        // Random delay between 2-5 seconds
+        const delay = Math.floor(Math.random() * 3000) + 2000
+        await new Promise(resolve => setTimeout(resolve, delay))
     }
 
     // Update last scraped timestamp
@@ -409,8 +439,9 @@ async function processGlobalSearch(tracker: TrackerWithSubreddit): Promise<numbe
                 if (created) leadsCreated++
             }
 
-            // Rate limit delay
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Random delay between 2-5 seconds
+            const delay = Math.floor(Math.random() * 3000) + 2000
+            await new Promise(resolve => setTimeout(resolve, delay))
         }
 
         // Delay between searches
