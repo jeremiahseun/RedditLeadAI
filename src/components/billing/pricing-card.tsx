@@ -1,25 +1,29 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, CreditCard, Check, Sparkles } from 'lucide-react'
+import { Loader2, CreditCard, Check, Sparkles, Zap } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface PricingCardProps {
     plan: 'founder' | 'agency'
     name: string
     price: number
+    originalPrice?: number
     features: string[]
     isPopular?: boolean
     currentPlan?: string
+    trialDays?: number
 }
 
 export function PricingCard({
     plan,
     name,
     price,
+    originalPrice,
     features,
     isPopular,
-    currentPlan
+    currentPlan,
+    trialDays
 }: PricingCardProps) {
     const [isLoading, setIsLoading] = useState(false)
     const isCurrentPlan = currentPlan === plan
@@ -69,9 +73,18 @@ export function PricingCard({
             <div className="text-center mb-6">
                 <h3 className="text-xl font-bold text-white">{name}</h3>
                 <div className="mt-4">
+                    {originalPrice && (
+                        <span className="text-lg text-slate-500 line-through mr-2">${originalPrice}</span>
+                    )}
                     <span className="text-4xl font-bold gradient-text">${price}</span>
                     <span className="text-slate-400">/month</span>
                 </div>
+                {trialDays && (
+                    <div className="mt-2 flex items-center justify-center gap-1 text-green-400 text-sm">
+                        <Zap className="w-3 h-3" />
+                        <span>{trialDays}-day free trial</span>
+                    </div>
+                )}
             </div>
 
             <ul className="space-y-3 mb-8">

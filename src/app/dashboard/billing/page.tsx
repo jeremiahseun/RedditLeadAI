@@ -37,13 +37,22 @@ export default async function BillingPage() {
                 </div>
             </div>
 
+            {/* Launch Pricing Banner */}
+            <div className="bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/30 rounded-xl p-4 mb-8 text-center">
+                <span className="text-purple-400 font-semibold">🚀 Launch Pricing</span>
+                <span className="text-slate-300 mx-2">•</span>
+                <span className="text-slate-400">Limited time offer with 3-day free trial</span>
+            </div>
+
             {/* Pricing Cards */}
             <div className="grid md:grid-cols-2 gap-6">
                 <PricingCard
                     plan="founder"
                     name="Founder"
-                    price={12}
+                    price={5}
+                    originalPrice={12}
                     currentPlan={currentPlan}
+                    trialDays={3}
                     features={[
                         'Unlimited leads',
                         '5 subreddit trackers',
@@ -55,9 +64,11 @@ export default async function BillingPage() {
                 <PricingCard
                     plan="agency"
                     name="Agency"
-                    price={39}
+                    price={12}
+                    originalPrice={39}
                     currentPlan={currentPlan}
                     isPopular
+                    trialDays={3}
                     features={[
                         'Everything in Founder',
                         'Unlimited trackers',

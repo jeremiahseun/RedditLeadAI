@@ -5,8 +5,14 @@ class DodoPaymentsService {
     private client: DodoPayments
 
     constructor() {
+        const apiKey = process.env.DODO_PAYMENTS_API_KEY
+        if (!apiKey) {
+            console.warn('[DodoPayments] WARNING: DODO_PAYMENTS_API_KEY is not set')
+        } else {
+            console.log('[DodoPayments] API key loaded (first 10 chars):', apiKey.substring(0, 10) + '...')
+        }
         this.client = new DodoPayments({
-            bearerToken: process.env.DODO_PAYMENTS_API_KEY,
+            bearerToken: apiKey,
         })
     }
 
@@ -33,7 +39,6 @@ class DodoPaymentsService {
                 ],
                 customer: {
                     email: params.customerEmail,
-                    customer_id: params.customerId,
                 },
             })
 
