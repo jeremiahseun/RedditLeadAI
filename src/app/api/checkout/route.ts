@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         const session = await dodoPayments.createCheckoutSession({
             productId,
             customerEmail: user.email,
-            customerId: user.id,
+            // Note: Don't send customerId - let Dodo create/link the customer
         })
 
         // The session contains a URL to redirect the user to
