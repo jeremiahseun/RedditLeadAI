@@ -7,13 +7,13 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-    title: "RedditLeadAI | Find High-Intent Leads on Reddit",
-    description: "Monitor subreddits, identify potential customers asking for recommendations, and get AI-generated replies. Powered by AI.",
-    keywords: ["reddit", "lead generation", "AI", "sales", "marketing", "SaaS"],
-    authors: [{ name: "RedditLeadAI" }],
+    title: "Rader | Internet Lead Detector",
+    description: "Stop Watching using Rader. Start Detecting. Monitor social platforms, identify high-intent leads, and get AI-generated replies.",
+    keywords: ["reddit", "lead generation", "AI", "sales", "marketing", "SaaS", "social listening"],
+    authors: [{ name: "Rader" }],
     openGraph: {
-        title: "RedditLeadAI | Find High-Intent Leads on Reddit",
-        description: "Monitor subreddits, identify potential customers asking for recommendations, and get AI-generated replies.",
+        title: "Rader | Internet Lead Detector",
+        description: "Stop Watching using Rader. Start Detecting. Monitor social platforms, identify high-intent leads, and get AI-generated replies.",
         type: "website",
     },
 }

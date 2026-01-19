@@ -3,7 +3,7 @@
  */
 
 const REDDIT_BASE_URL = 'https://www.reddit.com'
-const USER_AGENT = 'RedditLeadAI/1.0 (github.com/reddit-lead-ai)'
+const USER_AGENT = 'Rader/1.0 (github.com/reddit-lead-ai)'
 
 interface RedditSearchResult {
     id: string

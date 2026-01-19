@@ -127,10 +127,13 @@ export default function LoginPage() {
                 <div className="bg-slate-800/50 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-8">
                     {/* Logo */}
                     <div className="text-center mb-8">
+                        <div className="flex justify-center mb-4">
+                            <img src="/logo.png" alt="Rader" className="w-12 h-12 rounded-xl shadow-lg shadow-purple-500/20" />
+                        </div>
                         <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                            RedditLeadAI
+                            Rader
                         </h1>
-                        <p className="text-slate-400 mt-2">Find high-intent leads on Reddit</p>
+                        <p className="text-slate-400 mt-2">Find high-intent leads across the web</p>
                     </div>
 
                     <div className="space-y-4">

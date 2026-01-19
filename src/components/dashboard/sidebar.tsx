@@ -66,8 +66,8 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             {/* Logo */}
             <div className="p-6 border-b border-slate-800 flex items-center justify-between">
                 <Link href="/dashboard" className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex-shrink-0" />
-                    {!isCollapsed && <span className="text-lg font-bold text-white">RedditLeadAI</span>}
+                    <img src="/logo.png" alt="Rader" className="w-8 h-8 rounded-lg flex-shrink-0" />
+                    {!isCollapsed && <span className="text-lg font-bold text-white">Rader</span>}
                 </Link>
             </div>
 

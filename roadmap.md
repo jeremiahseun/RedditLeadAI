@@ -10,6 +10,15 @@
 - Inbox-style dashboard
 - Dodo Payments subscriptions
 - Google & Magic Link auth
+- **[NEW] Premium UI/UX (Glassmorphism & Animations)**
+- **[NEW] Competitor Watch (Track brand mentions)**
+
+---
+
+## Phase 1.5: Outbound & CRM (Immediate Follow-up)
+- **DM Drafts**: AI generates DM drafts for leads
+- **CRM Status**: Track leads (New -> Contacted -> Replied -> Converted)
+- **Competitor Analysis**: Historical data on competitor mentions
 
 ---
 
@@ -36,6 +45,7 @@ const response = await fetch(redditUrl, {
 - Lead conversion tracking
 - Subreddit performance metrics
 - Keyword effectiveness scores
+- **SEO Scanner**: Find Reddit threads ranking on Google (High value/Evergreen)
 
 ---
 
