@@ -1,15 +1,22 @@
 import DodoPayments from 'dodopayments'
 
+// Detect if we're in development mode (localhost)
+const isDevelopment = process.env.NODE_ENV === 'development'
+
 // Wrapper service for Dodo Payments to abstract implementation details
 class DodoPaymentsService {
     private client: DodoPayments
 
     constructor() {
-        const apiKey = process.env.DODO_PAYMENTS_API_KEY
+        // Use TEST API key in development, production key otherwise
+        const apiKey = isDevelopment
+            ? process.env.TEST_DODO_PAYMENTS_API_KEY
+            : process.env.DODO_PAYMENTS_API_KEY
+
         if (!apiKey) {
-            console.warn('[DodoPayments] WARNING: DODO_PAYMENTS_API_KEY is not set')
+            console.warn(`[DodoPayments] WARNING: ${isDevelopment ? 'TEST_' : ''}DODO_PAYMENTS_API_KEY is not set`)
         } else {
-            console.log('[DodoPayments] API key loaded (first 10 chars):', apiKey.substring(0, 10) + '...')
+            console.log(`[DodoPayments] ${isDevelopment ? 'TEST ' : ''}API key loaded (first 10 chars):`, apiKey.substring(0, 10) + '...')
         }
         this.client = new DodoPayments({
             bearerToken: apiKey,
@@ -28,6 +35,7 @@ class DodoPaymentsService {
             console.log('[DodoPayments] Creating checkout session:', {
                 productId: params.productId,
                 customerEmail: params.customerEmail,
+                mode: isDevelopment ? 'TEST' : 'LIVE',
             })
 
             const checkoutSession = await this.client.checkoutSessions.create({
@@ -91,10 +99,14 @@ class DodoPaymentsService {
 // Singleton instance
 export const dodoPayments = new DodoPaymentsService()
 
-// Product IDs for subscription plans (you'll need to create these in Dodo dashboard)
+// Product IDs - use TEST product IDs in development
 export const DODO_PRODUCT_IDS = {
-    founder: process.env.DODO_FOUNDER_PRODUCT_ID || 'founder_plan_id',
-    agency: process.env.DODO_AGENCY_PRODUCT_ID || 'agency_plan_id',
+    founder: isDevelopment
+        ? (process.env.TEST_DODO_FOUNDER_PRODUCT_ID || 'test_founder_plan_id')
+        : (process.env.DODO_FOUNDER_PRODUCT_ID || 'founder_plan_id'),
+    agency: isDevelopment
+        ? (process.env.TEST_DODO_AGENCY_PRODUCT_ID || 'test_agency_plan_id')
+        : (process.env.DODO_AGENCY_PRODUCT_ID || 'agency_plan_id'),
 } as const
 
 export type DodoPlanType = keyof typeof DODO_PRODUCT_IDS
