@@ -18,20 +18,31 @@ class DodoPaymentsService {
         customerEmail: string
         customerId?: string
     }) {
-        const checkoutSession = await this.client.checkoutSessions.create({
-            product_cart: [
-                {
-                    product_id: params.productId,
-                    quantity: 1,
-                },
-            ],
-            customer: {
-                email: params.customerEmail,
-                customer_id: params.customerId,
-            },
-        })
+        try {
+            console.log('[DodoPayments] Creating checkout session:', {
+                productId: params.productId,
+                customerEmail: params.customerEmail,
+            })
 
-        return checkoutSession
+            const checkoutSession = await this.client.checkoutSessions.create({
+                product_cart: [
+                    {
+                        product_id: params.productId,
+                        quantity: 1,
+                    },
+                ],
+                customer: {
+                    email: params.customerEmail,
+                    customer_id: params.customerId,
+                },
+            })
+
+            console.log('[DodoPayments] Checkout session created:', checkoutSession)
+            return checkoutSession
+        } catch (error) {
+            console.error('[DodoPayments] Failed to create checkout session:', error)
+            throw error
+        }
     }
 
     /**

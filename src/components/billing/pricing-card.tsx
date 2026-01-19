@@ -55,11 +55,11 @@ export function PricingCard({
     }
 
     return (
-        <div className={`relative bg-slate-800/50 backdrop-blur rounded-2xl p-8 border ${isPopular ? 'border-purple-500' : 'border-slate-700'
+        <div className={`relative glass-card p-8 hover-lift ${isPopular ? 'border-purple-500 glow-subtle' : ''
             }`}>
             {isPopular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
+                    <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1 pulse-glow">
                         <Sparkles className="w-3 h-3" />
                         Most Popular
                     </span>
@@ -69,7 +69,7 @@ export function PricingCard({
             <div className="text-center mb-6">
                 <h3 className="text-xl font-bold text-white">{name}</h3>
                 <div className="mt-4">
-                    <span className="text-4xl font-bold text-white">${price}</span>
+                    <span className="text-4xl font-bold gradient-text">${price}</span>
                     <span className="text-slate-400">/month</span>
                 </div>
             </div>
@@ -87,10 +87,10 @@ export function PricingCard({
                 onClick={handleSubscribe}
                 disabled={isLoading || isCurrentPlan}
                 className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${isCurrentPlan
-                        ? 'bg-green-500/20 text-green-400 cursor-default'
-                        : isPopular
-                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
-                            : 'bg-slate-700 hover:bg-slate-600 text-white'
+                    ? 'bg-green-500/20 text-green-400 cursor-default'
+                    : isPopular
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white'
+                        : 'bg-slate-700 hover:bg-slate-600 text-white'
                     } disabled:opacity-50`}
             >
                 {isLoading ? (
